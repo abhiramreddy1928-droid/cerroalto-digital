@@ -1,0 +1,8 @@
+@"
+.venv/
+.idea/
+qdrant_storage/
+__pycache__/
+*.pyc
+.env
+"@ | Out-File -Encoding utf8 .gitignore
