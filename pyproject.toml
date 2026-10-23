@@ -4,7 +4,6 @@ version = "0.1.0"
 requires-python = ">=3.14"
 dependencies = [
     "fastapi>=0.141.1",
-    "google-genai>=2.25.0",
     "inngest>=0.5.19",
     "llama-index-core>=0.14.25",
     "llama-index-readers-file>=0.7.0",
@@ -13,6 +12,5 @@ dependencies = [
     "pandas-stubs~=2.3.3",
     "python-dotenv>=1.2.3",
     "qdrant-client>=1.19.1",
-    "sentence-transformers>=6.1.0",
     "uvicorn>=0.54.0",
 ]

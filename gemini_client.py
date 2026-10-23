@@ -1,8 +1,7 @@
 import os
 
 from dotenv import load_dotenv
-from google import genai
-from google.genai import types
+from openai import OpenAI
 
 
 # --------------------------------------------------
@@ -13,34 +12,42 @@ load_dotenv()
 
 
 # --------------------------------------------------
-# GEMINI CONFIGURATION
+# OPENROUTER CONFIGURATION
 # --------------------------------------------------
 
-CHAT_MODEL = "gemini-2.5-flash"
+CHAT_MODEL = os.getenv(
+    "OPENROUTER_CHAT_MODEL",
+    "openai/gpt-4o-mini",
+)
 
 
 # --------------------------------------------------
-# GEMINI CLIENT
+# OPENROUTER CLIENT
 # --------------------------------------------------
 
-_client: genai.Client | None = None
+_client: OpenAI | None = None
 
 
-def _get_client() -> genai.Client:
+def _get_client() -> OpenAI:
 
     global _client
 
     if _client is None:
 
-        api_key = os.getenv("GEMINI_API_KEY")
+        api_key = os.getenv("OPENROUTER_API_KEY")
 
         if not api_key:
             raise RuntimeError(
-                "GEMINI_API_KEY is not set in the .env file."
+                "OPENROUTER_API_KEY is not set in the .env file."
             )
 
-        _client = genai.Client(
-            api_key=api_key
+        _client = OpenAI(
+            api_key=api_key,
+            base_url="https://openrouter.ai/api/v1",
+            default_headers={
+                "HTTP-Referer": "http://localhost:8000",
+                "X-Title": "Cerroalto Employee RAG",
+            },
         )
 
     return _client
@@ -55,33 +62,28 @@ def generate_answer(
     context_block: str,
 ) -> str:
 
-    prompt = (
-        "Use the following employee data context to answer "
-        "the user's question.\n\n"
-
-        f"Context:\n"
-        f"{context_block}\n\n"
-
-        f"Question:\n"
-        f"{question}\n\n"
-
-        "Answer concisely using only the provided context."
-    )
-
-    response = _get_client().models.generate_content(
+    response = _get_client().chat.completions.create(
         model=CHAT_MODEL,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            system_instruction=(
-                "You are an employee data assistant. "
-                "Answer questions using only the provided "
-                "employee data context. "
-                "If the answer cannot be found in the context, "
-                "say that the information is not available."
-            ),
-            temperature=0.2,
-            max_output_tokens=1024,
-        ),
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are an employee data assistant. Answer questions "
+                    "using only the provided employee data context. If the "
+                    "answer cannot be found in the context, say that the "
+                    "information is not available."
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    f"Context:\n{context_block}\n\n"
+                    f"Question:\n{question}"
+                ),
+            },
+        ],
+        temperature=0.2,
+        max_tokens=1024,
     )
 
-    return (response.text or "").strip()
+    return (response.choices[0].message.content or "").strip()

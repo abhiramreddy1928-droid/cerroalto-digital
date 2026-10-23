@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
     Distance,
@@ -5,41 +7,22 @@ from qdrant_client.models import (
     VectorParams,
 )
 
-
-# ============================================================
-# QDRANT CONFIGURATION
-# ============================================================
-
-# all-MiniLM-L6-v2 produces 384-dimensional embeddings.
-EMBED_DIM = 384
-
-# New collection for the local 384-dimensional embeddings.
-COLLECTION = "employees_minilm_384"
-
-# Local Qdrant database folder.
-QDRANT_PATH = "qdrant_storage"
+from data_loader import COLLECTION, EMBED_DIM
 
 
-# ============================================================
-# QDRANT CLIENT
-# ============================================================
+QDRANT_PATH = Path(__file__).parent / "qdrant_storage"
 
-# Create ONE Qdrant client for the application.
-_client = QdrantClient(
-    path=QDRANT_PATH
-)
+
+_client = QdrantClient(path=str(QDRANT_PATH))
 
 
 def _get_client() -> QdrantClient:
     """
     Return the shared Qdrant client.
     """
+
     return _client
 
-
-# ============================================================
-# QDRANT STORAGE CLASS
-# ============================================================
 
 class QdrantStorage:
 
@@ -48,19 +31,11 @@ class QdrantStorage:
         collection: str = COLLECTION,
         dim: int = EMBED_DIM,
     ):
-
         self.client = _get_client()
         self.collection = collection
         self.dim = dim
 
-        # ----------------------------------------------------
-        # CREATE COLLECTION IF IT DOES NOT EXIST
-        # ----------------------------------------------------
-
-        if not self.client.collection_exists(
-            self.collection
-        ):
-
+        if not self.client.collection_exists(self.collection):
             self.client.create_collection(
                 collection_name=self.collection,
                 vectors_config=VectorParams(
@@ -68,18 +43,39 @@ class QdrantStorage:
                     distance=Distance.COSINE,
                 ),
             )
+        else:
+            collection_info = self.client.get_collection(
+                self.collection
+            )
+            vector_config = collection_info.config.params.vectors
+            existing_dim = getattr(vector_config, "size", None)
+            existing_distance = getattr(
+                vector_config,
+                "distance",
+                None,
+            )
 
+            if existing_dim != self.dim:
+                raise RuntimeError(
+                    f"Qdrant collection '{self.collection}' uses "
+                    f"{existing_dim}-dimensional vectors, but this "
+                    f"application is configured for {self.dim}. "
+                    "Use a new collection or recreate the existing "
+                    "one before ingesting data."
+                )
 
-    # ========================================================
-    # UPSERT VECTORS
-    # ========================================================
+            if existing_distance != Distance.COSINE:
+                raise RuntimeError(
+                    f"Qdrant collection '{self.collection}' does not "
+                    "use cosine distance."
+                )
 
     def upsert(
         self,
         ids: list[int],
         vectors: list[list[float]],
         payloads: list[dict],
-    ):
+    ) -> None:
         """
         Insert or update employee vectors in Qdrant.
         """
@@ -87,54 +83,39 @@ class QdrantStorage:
         if not ids:
             return
 
-        if not vectors:
-            return
-
-        if not payloads:
-            return
-
-        # Make sure all lists have the same length.
         if not (
             len(ids)
             == len(vectors)
             == len(payloads)
         ):
             raise ValueError(
-                "IDs, vectors, and payloads must "
-                "have the same length."
+                "IDs, vectors, and payloads must have the same length."
             )
 
-        # Check embedding dimensions.
         for vector in vectors:
-
             if len(vector) != self.dim:
-
                 raise ValueError(
-                    f"Invalid embedding dimension. "
-                    f"Expected {self.dim}, "
-                    f"but received {len(vector)}."
+                    f"Invalid embedding dimension. Expected "
+                    f"{self.dim}, but received {len(vector)}."
                 )
 
-        # Create Qdrant points.
         points = [
             PointStruct(
-                id=ids[i],
-                vector=vectors[i],
-                payload=payloads[i],
+                id=point_id,
+                vector=vector,
+                payload=payload,
             )
-            for i in range(len(ids))
+            for point_id, vector, payload in zip(
+                ids,
+                vectors,
+                payloads,
+            )
         ]
 
-        # Store points in Qdrant.
         self.client.upsert(
             collection_name=self.collection,
             points=points,
         )
-
-
-    # ========================================================
-    # SEARCH
-    # ========================================================
 
     def search(
         self,
@@ -151,20 +132,15 @@ class QdrantStorage:
                 "sources": [],
             }
 
-        # Check query embedding dimension.
         if len(query_vector) != self.dim:
-
             raise ValueError(
-                f"Invalid query vector dimension. "
-                f"Expected {self.dim}, "
-                f"but received {len(query_vector)}."
+                f"Invalid query vector dimension. Expected "
+                f"{self.dim}, but received {len(query_vector)}."
             )
 
-        # Make sure top_k is valid.
         if top_k <= 0:
             top_k = 5
 
-        # Search Qdrant.
         results = self.client.query_points(
             collection_name=self.collection,
             query=query_vector,
@@ -175,29 +151,13 @@ class QdrantStorage:
         contexts = []
         sources = []
 
-        # Extract payloads.
         for point in results.points:
-
             payload = point.payload or {}
-
-            text = str(
-                payload.get(
-                    "text",
-                    "",
-                )
-            )
-
-            source = str(
-                payload.get(
-                    "source",
-                    "",
-                )
-            )
+            text = str(payload.get("text", ""))
+            source = str(payload.get("source", ""))
 
             if text:
-
                 contexts.append(text)
-
                 sources.append(source)
 
         return {
