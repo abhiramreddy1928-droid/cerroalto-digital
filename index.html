@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>CerroAlto Knowledge Assistant</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet"
+    >
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div class="app">
+
+    <!-- ================= SIDEBAR ================= -->
+
+    <aside class="sidebar">
+
+        <div class="sidebar-top">
+
+            <!-- Brand -->
+            <div class="brand">
+
+                <div class="brand-mark">
+                    CA
+                </div>
+
+                <div class="brand-text">
+                    <h1>CerroAlto</h1>
+                    <span>Knowledge Assistant</span>
+                </div>
+
+            </div>
+
+
+            <!-- New Chat -->
+            <button class="new-chat-btn" onclick="newChat()">
+
+                <span class="plus-icon">+</span>
+
+                <span>New conversation</span>
+
+            </button>
+
+
+            <!-- Knowledge Base -->
+            <div class="sidebar-section">
+
+                <div class="section-label">
+                    KNOWLEDGE BASE
+                </div>
+
+                <div class="dataset-card">
+
+                    <div class="dataset-icon">
+                        <svg
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.8"
+                        >
+                            <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5v-15Z"/>
+                            <path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20"/>
+                        </svg>
+                    </div>
+
+                    <div class="dataset-info">
+
+                        <strong>Company Knowledge</strong>
+
+                        <span>Connected dataset</span>
+
+                    </div>
+
+                    <div class="status-dot"></div>
+
+                </div>
+
+            </div>
+
+
+            <!-- Suggested Questions -->
+
+            <div class="sidebar-section">
+
+                <div class="section-label">
+                    SUGGESTED QUESTIONS
+                </div>
+
+                <div class="sidebar-suggestions">
+
+                    <button onclick="useExample('What services does CerroAlto provide?')">
+                        What services does CerroAlto provide?
+                    </button>
+
+                    <button onclick="useExample('What SAP solutions are available?')">
+                        What SAP solutions are available?
+                    </button>
+
+                    <button onclick="useExample('Tell me about the company.')">
+                        Tell me about the company.
+                    </button>
+
+                    <button onclick="useExample('What analytics capabilities are available?')">
+                        What analytics capabilities are available?
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- Sidebar bottom -->
+
+        <div class="sidebar-bottom">
+
+            <div class="system-status">
+
+                <span class="status-indicator"></span>
+
+                <div>
+                    <strong>System Online</strong>
+                    <small>Knowledge base connected</small>
+                </div>
+
+            </div>
+
+            <div class="sidebar-footer">
+                AI Knowledge Assistant
+            </div>
+
+        </div>
+
+    </aside>
+
+
+    <!-- ================= MAIN AREA ================= -->
+
+    <main class="main">
+
+        <!-- Background decoration -->
+
+        <div class="background-shape shape-one"></div>
+        <div class="background-shape shape-two"></div>
+
+
+        <!-- Header -->
+
+        <header class="topbar">
+
+            <div class="mobile-menu" onclick="toggleSidebar()">
+                ☰
+            </div>
+
+            <div class="header-title">
+
+                <span class="header-eyebrow">
+                    CERROALTO DIGITAL
+                </span>
+
+                <h2>Knowledge Assistant</h2>
+
+            </div>
+
+
+            <div class="connection-status">
+
+                <span class="connection-dot"></span>
+
+                <span>Connected</span>
+
+            </div>
+
+        </header>
+
+
+        <!-- Chat -->
+
+        <section class="chat-container" id="chatContainer">
+
+            <!-- Welcome -->
+
+            <div class="welcome" id="welcome">
+
+                <div class="welcome-mark">
+                    CA
+                </div>
+
+                <div class="welcome-badge">
+
+                    <span class="badge-dot"></span>
+
+                    AI Knowledge Assistant
+
+                </div>
+
+                <h1>
+                    How can I help you today?
+                </h1>
+
+                <p>
+                    Ask questions about the company knowledge base,
+                    services, solutions, analytics, and more.
+                </p>
+
+
+                <!-- Suggestion cards -->
+
+                <div class="suggestion-grid">
+
+                    <button
+                        class="suggestion-card"
+                        onclick="useExample('What services does CerroAlto provide?')"
+                    >
+
+                        <div class="suggestion-icon blue">
+                            ✦
+                        </div>
+
+                        <div>
+                            <strong>Company Services</strong>
+                            <span>Explore available services</span>
+                        </div>
+
+                    </button>
+
+
+                    <button
+                        class="suggestion-card"
+                        onclick="useExample('What SAP solutions are available?')"
+                    >
+
+                        <div class="suggestion-icon">
+                            ◈
+                        </div>
+
+                        <div>
+                            <strong>SAP Solutions</strong>
+                            <span>Learn about SAP capabilities</span>
+                        </div>
+
+                    </button>
+
+
+                    <button
+                        class="suggestion-card"
+                        onclick="useExample('Tell me about the company.')"
+                    >
+
+                        <div class="suggestion-icon">
+                            ◎
+                        </div>
+
+                        <div>
+                            <strong>About the Company</strong>
+                            <span>Get company information</span>
+                        </div>
+
+                    </button>
+
+
+                    <button
+                        class="suggestion-card"
+                        onclick="useExample('What analytics capabilities are available?')"
+                    >
+
+                        <div class="suggestion-icon">
+                            ◫
+                        </div>
+
+                        <div>
+                            <strong>Analytics</strong>
+                            <span>Explore analytics capabilities</span>
+                        </div>
+
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <!-- Messages -->
+
+            <div
+                class="chat-messages"
+                id="chatMessages"
+            ></div>
+
+        </section>
+
+
+        <!-- ================= INPUT AREA ================= -->
+
+        <div class="input-wrapper">
+
+            <div class="input-container">
+
+                <textarea
+                    id="questionInput"
+                    placeholder="Ask something about the company..."
+                    rows="1"
+                    onkeydown="handleKey(event)"
+                ></textarea>
+
+
+                <button
+                    class="send-button"
+                    id="sendButton"
+                    onclick="sendQuestion()"
+                    aria-label="Send question"
+                >
+
+                    <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                    >
+
+                        <path d="M22 2L11 13"></path>
+
+                        <path d="M22 2L15 22L11 13L2 9L22 2Z"></path>
+
+                    </svg>
+
+                </button>
+
+            </div>
+
+
+            <div class="input-hint">
+
+                <span>Press</span>
+
+                <kbd>Enter</kbd>
+
+                <span>to send</span>
+
+                <span class="separator">•</span>
+
+                <span>Shift + Enter for a new line</span>
+
+            </div>
+
+        </div>
+
+    </main>
+
+</div>
+
+
+<script src="script.js"></script>
+
+</body>
+</html>
