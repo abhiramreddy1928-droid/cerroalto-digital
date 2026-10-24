@@ -10,7 +10,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+import asyncio
 from starlette.concurrency import run_in_threadpool
+from starlette.requests import ClientDisconnect
 
 from data_loader import (
     EMBED_DIM,
@@ -20,6 +22,16 @@ from data_loader import (
 
 from vector_db import QdrantStorage, COLLECTION
 from gemini_client import generate_answer
+from assistant_context import (
+    get_capabilities_response,
+    get_company_overview_response,
+    get_unavailable_company_data_response,
+    get_out_of_scope_response,
+    is_capabilities_or_help_query,
+    is_company_overview_query,
+    is_unavailable_corporate_query,
+    is_out_of_scope_query,
+)
 
 
 # ============================================================
@@ -873,7 +885,44 @@ async def ask(req: AskRequest):
 
         logging.info("Received question: %s", question)
 
-        # 2. Answer exact dataset questions directly from the CSV
+        # 2. Check for Bot Capabilities / Help / Identity queries
+        if is_capabilities_or_help_query(question):
+            return {
+                "answer": get_capabilities_response(),
+                "contexts": [],
+                "sources": ["Assistant Capabilities Guide"],
+                "answer_type": "bot_capabilities",
+            }
+
+        # 3. Check for Company Overview / Office Hub queries
+        if is_company_overview_query(question):
+            return {
+                "answer": get_company_overview_response(),
+                "contexts": [],
+                "sources": ["CerroAlto Digital Organization Profile"],
+                "answer_type": "company_overview",
+            }
+
+        # 4. Check for unavailable corporate lore (CEO, revenue, history, physical address)
+        unavailable_topic = is_unavailable_corporate_query(question)
+        if unavailable_topic is not None:
+            return {
+                "answer": get_unavailable_company_data_response(unavailable_topic),
+                "contexts": [],
+                "sources": ["Knowledge Base Data Boundaries"],
+                "answer_type": "unavailable_corporate_data",
+            }
+
+        # 5. Check for out-of-scope off-topic queries (sports, recipes, general world trivia)
+        if is_out_of_scope_query(question):
+            return {
+                "answer": get_out_of_scope_response(),
+                "contexts": [],
+                "sources": ["Enterprise Guardrails"],
+                "answer_type": "out_of_scope_guardrail",
+            }
+
+        # 6. Answer exact dataset questions directly from the CSV
         direct_answer = answer_from_dataset(question)
         if direct_answer is not None:
             return {
@@ -956,6 +1005,10 @@ async def ask(req: AskRequest):
             "sources": sources,
             "answer_type": "rag",
         }
+
+    except (asyncio.CancelledError, ClientDisconnect):
+        logging.info("Chat request cancelled by client.")
+        raise
 
     except HTTPException:
         # Preserve intentional HTTP errors
