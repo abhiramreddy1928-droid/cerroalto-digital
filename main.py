@@ -800,36 +800,46 @@ async def rag_query_employee_data(ctx: inngest.Context):
 
 async def _seed_vectors_in_background():
     """
-    Seed Qdrant vector database in the background so Uvicorn
+    Verify Qdrant vector database in the background so Uvicorn
     can open its port immediately and satisfy Render's port scanner.
+    Cloud collections already seeded with points are immediately ready.
     """
+    import os
     try:
         store = QdrantStorage()
         info = store.client.get_collection(COLLECTION)
-        if info.points_count == 0:
-            logging.info("Vector collection '%s' is empty. Ingesting Employee.csv in background...", COLLECTION)
-            texts = load_employee_csv(str(CSV_PATH))
-            vectors = await run_in_threadpool(embed_texts, texts, "RETRIEVAL_DOCUMENT")
-            ids = list(range(1, len(texts) + 1))
-            payloads = [
-                {
-                    "text": text,
-                    "source": "Employee.csv",
-                    "employee_id": employee_id,
-                }
-                for text, employee_id in zip(texts, ids)
-            ]
-            store.upsert(ids=ids, vectors=vectors, payloads=payloads)
-            logging.info("Successfully seeded %d employee records into Qdrant.", len(ids))
+        if info.points_count > 0:
+            logging.info("Qdrant collection '%s' ready with %d points in cluster.", COLLECTION, info.points_count)
         else:
-            logging.info("Qdrant collection '%s' ready with %d points.", COLLECTION, info.points_count)
+            # Only seed if explicitly requested via SEED_ON_STARTUP=true
+            if os.getenv("SEED_ON_STARTUP", "false").lower() in ("true", "1"):
+                logging.info("Vector collection '%s' is empty. Ingesting Employee.csv...", COLLECTION)
+                texts = load_employee_csv(str(CSV_PATH))
+                vectors = await run_in_threadpool(embed_texts, texts, "RETRIEVAL_DOCUMENT")
+                ids = list(range(1, len(texts) + 1))
+                payloads = [
+                    {
+                        "text": text,
+                        "source": "Employee.csv",
+                        "employee_id": employee_id,
+                    }
+                    for text, employee_id in zip(texts, ids)
+                ]
+                store.upsert(ids=ids, vectors=vectors, payloads=payloads)
+                logging.info("Successfully seeded %d employee records into Qdrant.", len(ids))
+            else:
+                logging.warning(
+                    "Qdrant collection '%s' has 0 points. Skipping startup seeding on cloud instance "
+                    "to preserve memory. (Run local seed script or set SEED_ON_STARTUP=true).",
+                    COLLECTION,
+                )
     except Exception as exc:
-        logging.exception("Background vector seeding notice: %s", exc)
+        logging.exception("Background vector readiness notice: %s", exc)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Launch vector seeding in background so port opens in < 1 second
+    # Verify vector store in background so port opens in < 1 second
     import asyncio
     asyncio.create_task(_seed_vectors_in_background())
 

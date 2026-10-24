@@ -24,15 +24,17 @@ def _get_client() -> QdrantClient:
     """
     global _client
     if _client is None:
-        qdrant_url = os.getenv("QDRANT_URL", "").strip()
-        qdrant_api_key = os.getenv("QDRANT_API_KEY", "").strip()
+        raw_url = os.getenv("QDRANT_URL", "")
+        qdrant_url = raw_url.strip().strip("'").strip('"')
+        raw_key = os.getenv("QDRANT_API_KEY", "")
+        qdrant_api_key = raw_key.strip().strip("'").strip('"')
 
         if qdrant_url:
             logging.info("Connecting to remote Qdrant cluster at %s", qdrant_url)
             _client = QdrantClient(
                 url=qdrant_url,
                 api_key=qdrant_api_key or None,
-                timeout=20,
+                timeout=25,
             )
         else:
             QDRANT_PATH.mkdir(parents=True, exist_ok=True)
