@@ -786,14 +786,16 @@ async def rag_query_employee_data(ctx: inngest.Context):
 # FASTAPI APPLICATION & LIFESPAN
 # ============================================================
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Ensure Qdrant collection is seeded if empty
+async def _seed_vectors_in_background():
+    """
+    Seed Qdrant vector database in the background so Uvicorn
+    can open its port immediately and satisfy Render's port scanner.
+    """
     try:
         store = QdrantStorage()
         info = store.client.get_collection(COLLECTION)
         if info.points_count == 0:
-            logging.info("Vector collection '%s' is empty. Ingesting Employee.csv...", COLLECTION)
+            logging.info("Vector collection '%s' is empty. Ingesting Employee.csv in background...", COLLECTION)
             texts = load_employee_csv(str(CSV_PATH))
             vectors = await run_in_threadpool(embed_texts, texts, "RETRIEVAL_DOCUMENT")
             ids = list(range(1, len(texts) + 1))
@@ -810,7 +812,14 @@ async def lifespan(app: FastAPI):
         else:
             logging.info("Qdrant collection '%s' ready with %d points.", COLLECTION, info.points_count)
     except Exception as exc:
-        logging.exception("Startup vector seeding notice: %s", exc)
+        logging.exception("Background vector seeding notice: %s", exc)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Launch vector seeding in background so port opens in < 1 second
+    import asyncio
+    asyncio.create_task(_seed_vectors_in_background())
 
     yield
 
@@ -994,3 +1003,10 @@ inngest.fast_api.serve(
         rag_query_employee_data,
     ],
 )
+
+
+if __name__ == "__main__":
+    import os
+    import uvicorn
+    port = int(os.environ.get("PORT", 10000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port)
