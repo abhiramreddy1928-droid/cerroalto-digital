@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="CerroAlto Digital AI Knowledge Assistant - Instant enterprise answers and employee insights powered by RAG and analytics.">
 
     <title>CerroAlto Knowledge Assistant</title>
 
@@ -100,20 +101,20 @@
 
                 <div class="sidebar-suggestions">
 
-                    <button onclick="useExample('What services does CerroAlto provide?')">
-                        What services does CerroAlto provide?
+                    <button onclick="useExample('What can you help me with?')">
+                        What can you help me with?
                     </button>
 
-                    <button onclick="useExample('What SAP solutions are available?')">
-                        What SAP solutions are available?
+                    <button onclick="useExample('Tell me about CerroAlto Digital')">
+                        Tell me about CerroAlto Digital
                     </button>
 
-                    <button onclick="useExample('Tell me about the company.')">
-                        Tell me about the company.
+                    <button onclick="useExample('How many employees are in Bangalore?')">
+                        How many employees are in Bangalore?
                     </button>
 
-                    <button onclick="useExample('What analytics capabilities are available?')">
-                        What analytics capabilities are available?
+                    <button onclick="useExample('What percentage of employees are female?')">
+                        What percentage of employees are female?
                     </button>
 
                 </div>
@@ -223,7 +224,7 @@
 
                     <button
                         class="suggestion-card"
-                        onclick="useExample('What services does CerroAlto provide?')"
+                        onclick="useExample('What can you help me with?')"
                     >
 
                         <div class="suggestion-icon blue">
@@ -231,8 +232,8 @@
                         </div>
 
                         <div>
-                            <strong>Company Services</strong>
-                            <span>Explore available services</span>
+                            <strong>Assistant Capabilities</strong>
+                            <span>See what I can help you with</span>
                         </div>
 
                     </button>
@@ -240,7 +241,7 @@
 
                     <button
                         class="suggestion-card"
-                        onclick="useExample('What SAP solutions are available?')"
+                        onclick="useExample('Tell me about CerroAlto Digital')"
                     >
 
                         <div class="suggestion-icon">
@@ -248,8 +249,8 @@
                         </div>
 
                         <div>
-                            <strong>SAP Solutions</strong>
-                            <span>Learn about SAP capabilities</span>
+                            <strong>About CerroAlto</strong>
+                            <span>Organization & office hubs</span>
                         </div>
 
                     </button>
@@ -257,7 +258,7 @@
 
                     <button
                         class="suggestion-card"
-                        onclick="useExample('Tell me about the company.')"
+                        onclick="useExample('How many employees are in Bangalore?')"
                     >
 
                         <div class="suggestion-icon">
@@ -265,8 +266,8 @@
                         </div>
 
                         <div>
-                            <strong>About the Company</strong>
-                            <span>Get company information</span>
+                            <strong>City Demographics</strong>
+                            <span>Headcounts across locations</span>
                         </div>
 
                     </button>
@@ -274,7 +275,7 @@
 
                     <button
                         class="suggestion-card"
-                        onclick="useExample('What analytics capabilities are available?')"
+                        onclick="useExample('What percentage of employees are female?')"
                     >
 
                         <div class="suggestion-icon">
@@ -282,8 +283,8 @@
                         </div>
 
                         <div>
-                            <strong>Analytics</strong>
-                            <span>Explore analytics capabilities</span>
+                            <strong>Workforce Diversity</strong>
+                            <span>Explore gender & tiers</span>
                         </div>
 
                     </button>
@@ -307,6 +308,30 @@
 
         <div class="input-wrapper">
 
+            <!-- Stop Generating / Thinking Button Container -->
+            <div class="stop-generating-container" id="stopContainer" style="display: none;">
+                <button
+                    type="button"
+                    class="stop-button-pill"
+                    id="stopPillButton"
+                    onclick="stopThinking()"
+                    aria-label="Stop thinking"
+                    title="Stop thinking (Esc)"
+                >
+                    <svg
+                        class="stop-pill-icon"
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        aria-hidden="true"
+                    >
+                        <rect x="5" y="5" width="14" height="14" rx="2"></rect>
+                    </svg>
+                    <span>Stop thinking</span>
+                </button>
+            </div>
+
             <div class="input-container">
 
                 <textarea
@@ -320,23 +345,35 @@
                 <button
                     class="send-button"
                     id="sendButton"
-                    onclick="sendQuestion()"
+                    onclick="handleSendOrStop()"
                     aria-label="Send question"
+                    title="Send question"
                 >
 
                     <svg
+                        class="send-icon"
                         width="20"
                         height="20"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
                         stroke-width="2"
+                        aria-hidden="true"
                     >
-
                         <path d="M22 2L11 13"></path>
-
                         <path d="M22 2L15 22L11 13L2 9L22 2Z"></path>
+                    </svg>
 
+                    <svg
+                        class="stop-icon"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        style="display: none;"
+                        aria-hidden="true"
+                    >
+                        <rect x="5" y="5" width="14" height="14" rx="2"></rect>
                     </svg>
 
                 </button>
@@ -355,6 +392,12 @@
                 <span class="separator">•</span>
 
                 <span>Shift + Enter for a new line</span>
+
+                <span class="separator">•</span>
+
+                <kbd>Esc</kbd>
+
+                <span>to stop thinking</span>
 
             </div>
 

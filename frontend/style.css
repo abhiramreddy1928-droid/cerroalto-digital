@@ -1442,6 +1442,134 @@ textarea:focus-visible {
 }
 
 
+/* ================= THINKING ROW & INLINE STOP ================= */
+
+.thinking-row {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 9px;
+
+    flex-wrap: wrap;
+
+    min-height: 26px;
+
+}
+
+
+.thinking-text {
+
+    font-size: 12px;
+
+    color: var(--ca-muted);
+
+    font-weight: 500;
+
+}
+
+
+.inline-stop-btn {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    gap: 5px;
+
+    padding: 3px 9px;
+
+    background: #FFFFFF;
+
+    border: 1px solid #D5E4EE;
+
+    border-radius: 6px;
+
+    color: var(--ca-text);
+
+    font-family: inherit;
+
+    font-size: 11px;
+
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition: all 0.18s ease;
+
+}
+
+
+.inline-stop-btn svg {
+
+    color: #E11D48;
+
+    flex-shrink: 0;
+
+}
+
+
+.inline-stop-btn:hover {
+
+    background: #FFF1F2;
+
+    border-color: #FECDD3;
+
+    color: #BE123C;
+
+    transform: translateY(-1px);
+
+    box-shadow: 0 2px 8px rgba(225, 29, 72, 0.12);
+
+}
+
+
+.inline-stop-btn:active {
+
+    transform: translateY(0);
+
+}
+
+
+/* Stopped Message Badge */
+
+.message-stopped {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    gap: 6px;
+
+    padding: 6px 12px;
+
+    background: #F1F6F9;
+
+    border: 1px solid #DCE6ED;
+
+    border-radius: 6px;
+
+    color: #647B91;
+
+    font-size: 12px;
+
+    font-weight: 500;
+
+    font-style: italic;
+
+}
+
+
+.message-stopped svg {
+
+    color: #8DA1B2;
+
+    flex-shrink: 0;
+
+}
+
+
 /* =========================================================
    INPUT AREA
    ========================================================= */
@@ -1629,6 +1757,180 @@ textarea::placeholder {
 .send-button:disabled svg {
 
     transform: none;
+
+}
+
+
+/* ================= STOP GENERATING BUTTONS ================= */
+
+.stop-generating-container {
+
+    max-width: 900px;
+
+    margin: 0 auto 10px;
+
+    display: flex;
+
+    justify-content: center;
+
+    align-items: center;
+
+    animation: stopFadeSlideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+
+}
+
+
+@keyframes stopFadeSlideUp {
+
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+}
+
+
+.stop-button-pill {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    gap: 8px;
+
+    padding: 8px 18px;
+
+    background: rgba(255, 255, 255, 0.98);
+
+    border: 1px solid #D0E1ED;
+
+    border-radius: 9999px;
+
+    color: var(--ca-navy);
+
+    font-family: inherit;
+
+    font-size: 12px;
+
+    font-weight: 600;
+
+    cursor: pointer;
+
+    box-shadow:
+        0 4px 18px rgba(0, 59, 100, 0.08),
+        0 1px 3px rgba(0, 0, 0, 0.04);
+
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+
+    backdrop-filter: blur(10px);
+
+}
+
+
+.stop-button-pill .stop-pill-icon {
+
+    color: #E11D48;
+
+    flex-shrink: 0;
+
+    transition: transform 0.2s ease;
+
+}
+
+
+.stop-button-pill:hover {
+
+    background: #FFFFFF;
+
+    border-color: #B2CEE0;
+
+    color: #001625;
+
+    transform: translateY(-1px);
+
+    box-shadow:
+        0 8px 24px rgba(0, 59, 100, 0.12),
+        0 2px 6px rgba(0, 0, 0, 0.04);
+
+}
+
+
+.stop-button-pill:hover .stop-pill-icon {
+
+    transform: scale(1.15);
+
+}
+
+
+.stop-button-pill:active {
+
+    transform: translateY(0) scale(0.98);
+
+}
+
+
+/* Transform Send Button when is-generating */
+
+.send-button.is-generating {
+
+    background: #002138;
+
+    border: 1px solid rgba(255, 255, 255, 0.15);
+
+    box-shadow: 0 4px 14px rgba(0, 33, 56, 0.35);
+
+    animation: stopPulse 2s infinite ease-in-out;
+
+}
+
+
+.send-button.is-generating .stop-icon {
+
+    color: #FFFFFF;
+
+    transition: transform 0.2s ease;
+
+}
+
+
+.send-button.is-generating:hover {
+
+    background: #E11D48;
+
+    border-color: #E11D48;
+
+    box-shadow: 0 6px 20px rgba(225, 29, 72, 0.35);
+
+    transform: translateY(-1px) scale(1.02);
+
+}
+
+
+.send-button.is-generating:hover .stop-icon {
+
+    transform: scale(1.12);
+
+}
+
+
+@keyframes stopPulse {
+
+    0% {
+        box-shadow: 0 0 0 0 rgba(0, 33, 56, 0.4);
+    }
+
+    70% {
+        box-shadow: 0 0 0 7px rgba(0, 33, 56, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(0, 33, 56, 0);
+    }
 
 }
 
