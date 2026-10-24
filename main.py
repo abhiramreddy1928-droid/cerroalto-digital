@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import re
@@ -18,7 +19,7 @@ from data_loader import (
 )
 
 from vector_db import QdrantStorage, COLLECTION
-from ollama_client import generate_answer
+from gemini_client import generate_answer
 
 
 # ============================================================
@@ -368,11 +369,19 @@ def answer_from_dataset(question: str) -> str | None:
         if filtered_df.empty:
             return "No employee records match those conditions."
 
+        max_display = 50
         records = []
-        for row_index, row in filtered_df.iterrows():
+        for row_index, row in filtered_df.head(max_display).iterrows():
             details = ", ".join(f"{column}: {row[column]}" for column in employee_df.columns)
             records.append(f"Employee record {row_index + 1}: {details}")
-        return f"Found {len(filtered_df):,} matching employee records:\n\n" + "\n".join(records)
+
+        msg = f"Found {len(filtered_df):,} matching employee records"
+        if len(filtered_df) > max_display:
+            msg += f" (displaying first {max_display}):\n\n"
+        else:
+            msg += ":\n\n"
+
+        return msg + "\n".join(records)
 
     if wants_count and applied_filters and not asks_for_analysis:
         return f"There are {len(filtered_df):,} employees matching: {', '.join(applied_filters)}."
@@ -435,6 +444,9 @@ def answer_analytics_question(question: str) -> str | None:
             .round(1)
         )
 
+        if rates.empty:
+            return "No city and gender leave rate data available."
+
         highest_group = rates.idxmax()
         highest_rate = rates.max()
 
@@ -459,12 +471,18 @@ def answer_analytics_question(question: str) -> str | None:
     ):
         older_employees = employee_df[employee_df["Age"].ge(30)]
 
+        if older_employees.empty:
+            return "No employee records found for employees aged 30 or above."
+
         rates = (
             older_employees.groupby("PaymentTier")["LeaveOrNot"]
             .mean()
             .mul(100)
             .round(1)
         )
+
+        if rates.empty:
+            return "No payment tier data available for employees aged 30 or above."
 
         highest_tier = rates.idxmax()
 
@@ -485,7 +503,13 @@ def answer_analytics_question(question: str) -> str | None:
         and "highest" in q
         and any(word in q for word in ["left", "leaving", "leave"])
     ):
+        if left.empty:
+            return "No records of employees who left the company."
+
         grouped = left.groupby(["City", "Education"]).size()
+        if grouped.empty:
+            return "No city and education grouping data available for employees who left."
+
         city, education = grouped.idxmax()
         count = grouped.max()
 
@@ -759,14 +783,44 @@ async def rag_query_employee_data(ctx: inngest.Context):
 
 
 # ============================================================
-# FASTAPI APPLICATION
+# FASTAPI APPLICATION & LIFESPAN
 # ============================================================
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Ensure Qdrant collection is seeded if empty
+    try:
+        store = QdrantStorage()
+        info = store.client.get_collection(COLLECTION)
+        if info.points_count == 0:
+            logging.info("Vector collection '%s' is empty. Ingesting Employee.csv...", COLLECTION)
+            texts = load_employee_csv(str(CSV_PATH))
+            vectors = await run_in_threadpool(embed_texts, texts, "RETRIEVAL_DOCUMENT")
+            ids = list(range(1, len(texts) + 1))
+            payloads = [
+                {
+                    "text": text,
+                    "source": "Employee.csv",
+                    "employee_id": employee_id,
+                }
+                for text, employee_id in zip(texts, ids)
+            ]
+            store.upsert(ids=ids, vectors=vectors, payloads=payloads)
+            logging.info("Successfully seeded %d employee records into Qdrant.", len(ids))
+        else:
+            logging.info("Qdrant collection '%s' ready with %d points.", COLLECTION, info.points_count)
+    except Exception as exc:
+        logging.exception("Startup vector seeding notice: %s", exc)
+
+    yield
+
+    logging.info("Application shutting down.")
+
+
+app = FastAPI(lifespan=lifespan)
 
 
 # Allow the frontend to call the API from any origin
-# (file://, VS Code Live Server on port 5500, or this server)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -779,18 +833,8 @@ app.add_middleware(
 # HEALTH CHECK
 # ============================================================
 
-@app.get("/")
-def root():
-
-    return {
-        "status": "ok",
-        "message": "RAG Employee Assistant API is running",
-    }
-
-
 @app.get("/health")
 def health():
-
     return {
         "status": "ok",
         "message": "RAG Employee Assistant API is running",
@@ -804,7 +848,6 @@ def health():
 class AskRequest(BaseModel):
     question: str
     top_k: int = 5
-
 
 
 @app.post("/api/ask")
@@ -865,14 +908,20 @@ async def ask(req: AskRequest):
         # 5. Use RAG only for unstructured, non-dataset questions.
         top_k = max(1, min(req.top_k, 20))
 
-        query_vector = embed_texts(
+        # Offload embedding inference to worker thread
+        query_vectors = await run_in_threadpool(
+            embed_texts,
             [question],
-            task_type="RETRIEVAL_QUERY",
-        )[0]
+            "RETRIEVAL_QUERY",
+        )
+        query_vector = query_vectors[0]
 
-        found = QdrantStorage().search(
-            query_vector=query_vector,
-            top_k=top_k,
+        # Offload vector search to worker thread
+        store = QdrantStorage()
+        found = await run_in_threadpool(
+            store.search,
+            query_vector,
+            top_k,
         )
 
         contexts = list(found.get("contexts", []))
@@ -880,12 +929,12 @@ async def ask(req: AskRequest):
 
         if not contexts:
             return {
-                "answer": "The information is not available.",
+                "answer": "The information is not available in the company knowledge base.",
                 "contexts": [],
                 "sources": [],
             }
 
-        # 4. Generate the answer using your existing Ollama client
+        # Generate the answer using OpenRouter client in worker thread
         answer = await run_in_threadpool(
             generate_answer,
             question,
@@ -913,21 +962,24 @@ async def ask(req: AskRequest):
         )
 
 
-
 # ============================================================
-# SERVE THE FRONTEND AT http://127.0.0.1:8000/app/
+# SERVE THE FRONTEND
 # ============================================================
 
 _here = Path(__file__).parent
+_frontend_dir = _here / "frontend"
 
-for _candidate in (_here / "frontend", _here.parent / "frontend"):
-    if _candidate.exists():
-        app.mount(
-            "/app",
-            StaticFiles(directory=str(_candidate), html=True),
-            name="frontend",
-        )
-        break
+if _frontend_dir.exists():
+    app.mount(
+        "/app",
+        StaticFiles(directory=str(_frontend_dir), html=True),
+        name="frontend_app",
+    )
+    app.mount(
+        "/",
+        StaticFiles(directory=str(_frontend_dir), html=True),
+        name="frontend_root",
+    )
 
 
 # ============================================================

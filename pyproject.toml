@@ -1,16 +1,15 @@
 [project]
-name = "abhi-s-project-1"
+name = "cerroalto-digital"
 version = "0.1.0"
-requires-python = ">=3.14"
+requires-python = ">=3.11"
 dependencies = [
-    "fastapi>=0.141.1",
-    "inngest>=0.5.19",
-    "llama-index-core>=0.14.25",
-    "llama-index-readers-file>=0.7.0",
-    "openai>=3.22.1",
-    "pandas>=2.3.3",
-    "pandas-stubs~=2.3.3",
-    "python-dotenv>=1.2.3",
-    "qdrant-client>=1.19.1",
-    "uvicorn>=0.54.0",
+    "fastapi>=0.115.0",
+    "pandas>=2.2.0",
+    "python-dotenv>=1.0.0",
+    "qdrant-client>=1.10.0",
+    "openai>=1.40.0",
+    "sentence-transformers>=3.0.0",
+    "uvicorn>=0.30.0",
+    "starlette>=0.38.0",
+    "pydantic>=2.8.0",
 ]

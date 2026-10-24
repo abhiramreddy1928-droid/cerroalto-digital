@@ -1,8 +1,31 @@
-@"
+# Virtual Environments
 .venv/
-.idea/
-qdrant_storage/
+venv/
+env/
+
+# Python Bytecode & Cache
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+
+# Local Database & Storage
+qdrant_storage/
+qdrant_db/
+*.sqlite
+*.lock
+.lock
+
+# Environment Variables & Secrets
 .env
-"@ | Out-File -Encoding utf8 .gitignore
+.env.local
+
+# IDE & Editor Settings
+.idea/
+.vscode/
+*.swp
+*~
+
+# Operating System
+.DS_Store
+Thumbs.db

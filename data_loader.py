@@ -3,8 +3,6 @@ from typing import Any
 
 import pandas as pd
 from dotenv import load_dotenv
-from llama_index.core.node_parser import SentenceSplitter
-from llama_index.readers.file import PDFReader
 
 
 # ============================================================
@@ -55,16 +53,20 @@ def _get_model() -> Any:
 # PDF CHUNKING
 # ============================================================
 
-splitter = SentenceSplitter(
-    chunk_size=1000,
-    chunk_overlap=200,
-)
-
-
 def load_and_chunk_pdf(path: str) -> list[str]:
     """
-    Load a PDF and split its text into chunks.
+    Load a PDF and split its text into chunks (lazy import).
     """
+    try:
+        from llama_index.core.node_parser import SentenceSplitter
+        from llama_index.readers.file import PDFReader
+    except ImportError as err:
+        raise RuntimeError("llama-index packages are required for PDF loading.") from err
+
+    splitter = SentenceSplitter(
+        chunk_size=1000,
+        chunk_overlap=200,
+    )
 
     docs = PDFReader().load_data(file=path)
 

@@ -1,26 +1,22 @@
-<<<<<<< HEAD
 /* =========================================================
    CERROALTO KNOWLEDGE ASSISTANT
-   Frontend JavaScript
+   Frontend JavaScript (Production Ready)
    ========================================================= */
 
-
-// Backend endpoint (FastAPI: POST /api/ask)
-const API_URL = "http://127.0.0.1:8000/api/ask";
-
+// Dynamic API URL:
+// If running on a different port locally (e.g. VS Code Live Server on port 5500), point to localhost:8000.
+// If served from FastAPI or deployed on Render, use relative '/api/ask'.
+const API_URL = (window.location.port && window.location.port !== "8000" && window.location.hostname === "127.0.0.1")
+    ? "http://127.0.0.1:8000/api/ask"
+    : "/api/ask";
 
 const questionInput = document.getElementById("questionInput");
-
 const chatMessages = document.getElementById("chatMessages");
-
 const welcome = document.getElementById("welcome");
-
 const sendButton = document.getElementById("sendButton");
-
 const chatContainer = document.getElementById("chatContainer");
 
-
-// User avatar icon (inherits the avatar's text color)
+// Modern SVG User Avatar
 const USER_ICON = `
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
          stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -29,789 +25,176 @@ const USER_ICON = `
     </svg>
 `;
 
-
 /* =========================================================
    SEND QUESTION
    ========================================================= */
-
 async function sendQuestion() {
-
     const question = questionInput.value.trim();
+    if (!question) return;
 
-    if (!question) {
-        return;
-    }
+    // Hide welcome card on first message
+    if (welcome) welcome.style.display = "none";
 
-
-    // Hide welcome screen
-
-    welcome.style.display = "none";
-
-
-    // Add user's question
-
+    // Add user question to stream
     addMessage(question, "user");
 
-
-    // Clear input
-
+    // Reset input
     questionInput.value = "";
-
     resetTextarea();
 
-
-    // Disable send button
-
+    // Disable input while processing
     sendButton.disabled = true;
-
-
-    // Show loading animation
-
     const loadingMessage = addLoadingMessage();
 
-
     try {
-
-        /*
-         * Request:  { "question": "...", "top_k": 5 }
-         * Response: { "answer": "...", "contexts": [...], "sources": [...] }
-         */
-
-        const response = await fetch(
-    "http://127.0.0.1:8000/api/ask",
-    {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            question: question
-        })
-    }
-);
-
+        const response = await fetch(API_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                question: question,
+                top_k: 5
+            })
+        });
 
         if (!response.ok) {
-
-            let detail = `Backend returned ${response.status}`;
-
+            let detail = `Server responded with status ${response.status}`;
             try {
                 const err = await response.json();
-                if (err.detail) {
-                    detail = err.detail;
-                }
+                if (err.detail) detail = err.detail;
             } catch (e) {
-                // response was not JSON; keep the default message
+                // Fallback to HTTP status string
             }
-
             throw new Error(detail);
-
         }
 
-
         const data = await response.json();
-
-
-        // Remove loading message
-
         loadingMessage.remove();
 
-
-        // Display AI answer
-
         addMessage(
-            data.answer || "I received an empty response.",
+            data.answer || "I received an empty response from the knowledge base.",
             "ai"
         );
-
 
     } catch (error) {
-
-        console.error(
-            "Backend connection error:",
-            error
-        );
-
-
+        console.error("API Connection Error:", error);
         loadingMessage.remove();
 
-
         addMessage(
-            "I’m unable to get an answer right now. Please make sure the backend server and Ollama are running. (" +
-            error.message +
-            ")",
+            `Unable to retrieve an answer right now (${error.message}). If the service just woke up from sleep, please try again in a few seconds.`,
             "ai"
         );
-
     } finally {
-
         sendButton.disabled = false;
-
         questionInput.focus();
-
     }
-
 }
 
-
 /* =========================================================
-   ADD MESSAGE
+   MESSAGE RENDERING
    ========================================================= */
-
 function addMessage(text, sender) {
-
     const message = document.createElement("div");
 
-
     if (sender === "user") {
-
         message.className = "message user-message";
-
         message.innerHTML = `
-
             <div class="avatar user-avatar" aria-hidden="true">
                 ${USER_ICON}
             </div>
-
             <div class="message-content">
-
-                <div class="message-name">
-                    User
-                </div>
-
-                <div class="message-text">
-                    ${escapeHTML(text)}
-                </div>
-
+                <div class="message-name">You</div>
+                <div class="message-text">${escapeHTML(text)}</div>
             </div>
-
         `;
-
     } else {
-
         message.className = "message ai-message";
-
         message.innerHTML = `
-
-            <div class="avatar ai-avatar" aria-hidden="true">
-                CA
-            </div>
-
+            <div class="avatar ai-avatar" aria-hidden="true">CA</div>
             <div class="message-content">
-
-                <div class="message-name">
-                    CerroAlto Assistant
-                </div>
-
-                <div class="message-text">
-                    ${escapeHTML(text)}
-                </div>
-
+                <div class="message-name">CerroAlto Assistant</div>
+                <div class="message-text">${formatAIResponse(text)}</div>
             </div>
-
         `;
-
     }
 
-
     chatMessages.appendChild(message);
-
-
     scrollToBottom();
-
 }
 
-
-/* =========================================================
-   LOADING MESSAGE
-   ========================================================= */
-
 function addLoadingMessage() {
-
     const message = document.createElement("div");
-
     message.className = "message ai-message";
-
-
     message.innerHTML = `
-
-        <div class="avatar ai-avatar" aria-hidden="true">
-            CA
-        </div>
-
+        <div class="avatar ai-avatar" aria-hidden="true">CA</div>
         <div class="message-content">
-
-            <div class="message-name">
-                CerroAlto Assistant
-            </div>
-
+            <div class="message-name">CerroAlto Assistant</div>
             <div class="typing">
-
-                <span></span>
-                <span></span>
-                <span></span>
-
+                <span></span><span></span><span></span>
             </div>
-
         </div>
-
     `;
-
-
     chatMessages.appendChild(message);
-
-
     scrollToBottom();
-
-
     return message;
-
 }
-
-
-/* =========================================================
-   USE EXAMPLE QUESTION
-   ========================================================= */
 
 function useExample(question) {
-
     questionInput.value = question;
-
     questionInput.focus();
-
-
-    // Automatically resize textarea
-
     questionInput.style.height = "auto";
-
-    questionInput.style.height =
-        Math.min(
-            questionInput.scrollHeight,
-            120
-        ) + "px";
-
+    questionInput.style.height = Math.min(questionInput.scrollHeight, 120) + "px";
 }
-
-
-/* =========================================================
-   ENTER KEY
-   ========================================================= */
 
 function handleKey(event) {
-
-    if (
-        event.key === "Enter" &&
-        !event.shiftKey
-    ) {
-
+    if (event.key === "Enter" && !event.shiftKey) {
         event.preventDefault();
-
         sendQuestion();
-
     }
-
 }
 
-
-/* =========================================================
-   TEXTAREA AUTO RESIZE
-   ========================================================= */
-
-questionInput.addEventListener(
-    "input",
-    function () {
-
-        this.style.height = "auto";
-
-        this.style.height =
-            Math.min(
-                this.scrollHeight,
-                120
-            ) + "px";
-
-    }
-);
-
-
-/* =========================================================
-   NEW CHAT
-   ========================================================= */
+questionInput.addEventListener("input", function () {
+    this.style.height = "auto";
+    this.style.height = Math.min(this.scrollHeight, 120) + "px";
+});
 
 function newChat() {
-
     chatMessages.innerHTML = "";
-
-    welcome.style.display = "block";
-
+    if (welcome) welcome.style.display = "block";
     questionInput.value = "";
-
     resetTextarea();
-
     questionInput.focus();
 
-
-    // Close sidebar on mobile
-
-    const sidebar =
-        document.querySelector(".sidebar");
-
-    sidebar.classList.remove("active");
-
+    const sidebar = document.querySelector(".sidebar");
+    if (sidebar) sidebar.classList.remove("active");
 }
-
-
-/* =========================================================
-   MOBILE SIDEBAR
-   ========================================================= */
 
 function toggleSidebar() {
-
-    const sidebar =
-        document.querySelector(".sidebar");
-
-    sidebar.classList.toggle("active");
-
+    const sidebar = document.querySelector(".sidebar");
+    if (sidebar) sidebar.classList.toggle("active");
 }
-
-
-/* =========================================================
-   SCROLL CHAT
-   ========================================================= */
 
 function scrollToBottom() {
-
     setTimeout(() => {
-
         chatContainer.scrollTo({
-
             top: chatContainer.scrollHeight,
-
             behavior: "smooth"
-
         });
-
     }, 50);
-
 }
-
 
 function resetTextarea() {
-
     questionInput.style.height = "auto";
-
 }
-
 
 function escapeHTML(text) {
-
-    const div =
-        document.createElement("div");
-
+    const div = document.createElement("div");
     div.textContent = text;
-
     return div.innerHTML;
-
-=======
-/* =========================================================
-   CERROALTO KNOWLEDGE ASSISTANT
-   Frontend JavaScript
-   ========================================================= */
-
-
-// Backend endpoint (FastAPI: POST /api/ask)
-const API_URL = "http://127.0.0.1:8000/api/ask";
-
-
-const questionInput = document.getElementById("questionInput");
-
-const chatMessages = document.getElementById("chatMessages");
-
-const welcome = document.getElementById("welcome");
-
-const sendButton = document.getElementById("sendButton");
-
-const chatContainer = document.getElementById("chatContainer");
-
-
-/* =========================================================
-   SEND QUESTION
-   ========================================================= */
-
-async function sendQuestion() {
-
-    const question = questionInput.value.trim();
-
-    if (!question) {
-        return;
-    }
-
-
-    // Hide welcome screen
-
-    welcome.style.display = "none";
-
-
-    // Add user's question
-
-    addMessage(question, "user");
-
-
-    // Clear input
-
-    questionInput.value = "";
-
-    resetTextarea();
-
-
-    // Disable send button
-
-    sendButton.disabled = true;
-
-
-    // Show loading animation
-
-    const loadingMessage = addLoadingMessage();
-
-
-    try {
-
-        /*
-         * Request:  { "question": "...", "top_k": 5 }
-         * Response: { "answer": "...", "contexts": [...], "sources": [...] }
-         */
-
-        const response = await fetch(
-            API_URL,
-            {
-                method: "POST",
-
-                headers: {
-                    "Content-Type": "application/json"
-                },
-
-                body: JSON.stringify({
-                    question: question,
-                    top_k: 5
-                })
-            }
-        );
-
-
-        if (!response.ok) {
-
-            let detail = `Backend returned ${response.status}`;
-
-            try {
-                const err = await response.json();
-                if (err.detail) {
-                    detail = err.detail;
-                }
-            } catch (e) {
-                // response was not JSON; keep the default message
-            }
-
-            throw new Error(detail);
-
-        }
-
-
-        const data = await response.json();
-
-
-        // Remove loading message
-
-        loadingMessage.remove();
-
-
-        // Display AI answer
-
-        addMessage(
-            data.answer || "I received an empty response.",
-            "ai"
-        );
-
-
-    } catch (error) {
-
-        console.error(
-            "Backend connection error:",
-            error
-        );
-
-
-        loadingMessage.remove();
-
-
-        addMessage(
-            "I’m unable to get an answer right now. Please make sure the backend server and Ollama are running. (" +
-            error.message +
-            ")",
-            "ai"
-        );
-
-    } finally {
-
-        sendButton.disabled = false;
-
-        questionInput.focus();
-
-    }
-
 }
 
-
-/* =========================================================
-   ADD MESSAGE
-   ========================================================= */
-
-function addMessage(text, sender) {
-
-    const message = document.createElement("div");
-
-    message.className = "message";
-
-
-    if (sender === "user") {
-
-        message.innerHTML = `
-
-            <div class="avatar user-avatar">
-                YOU
-            </div>
-
-            <div class="message-content">
-
-                <div class="message-name">
-                    You
-                </div>
-
-                <div class="message-text">
-                    ${escapeHTML(text)}
-                </div>
-
-            </div>
-
-        `;
-
-    } else {
-
-        message.innerHTML = `
-
-            <div class="avatar ai-avatar">
-                CA
-            </div>
-
-            <div class="message-content">
-
-                <div class="message-name">
-                    CerroAlto Assistant
-                </div>
-
-                <div class="message-text">
-                    ${escapeHTML(text)}
-                </div>
-
-            </div>
-
-        `;
-
-    }
-
-
-    chatMessages.appendChild(message);
-
-
-    scrollToBottom();
-
-}
-
-
-/* =========================================================
-   LOADING MESSAGE
-   ========================================================= */
-
-function addLoadingMessage() {
-
-    const message = document.createElement("div");
-
-    message.className = "message";
-
-
-    message.innerHTML = `
-
-        <div class="avatar ai-avatar">
-            CA
-        </div>
-
-        <div class="message-content">
-
-            <div class="message-name">
-                CerroAlto Assistant
-            </div>
-
-            <div class="typing">
-
-                <span></span>
-                <span></span>
-                <span></span>
-
-            </div>
-
-        </div>
-
-    `;
-
-
-    chatMessages.appendChild(message);
-
-
-    scrollToBottom();
-
-
-    return message;
-
-}
-
-
-/* =========================================================
-   USE EXAMPLE QUESTION
-   ========================================================= */
-
-function useExample(question) {
-
-    questionInput.value = question;
-
-    questionInput.focus();
-
-
-    // Automatically resize textarea
-
-    questionInput.style.height = "auto";
-
-    questionInput.style.height =
-        Math.min(
-            questionInput.scrollHeight,
-            120
-        ) + "px";
-
-}
-
-
-/* =========================================================
-   ENTER KEY
-   ========================================================= */
-
-function handleKey(event) {
-
-    if (
-        event.key === "Enter" &&
-        !event.shiftKey
-    ) {
-
-        event.preventDefault();
-
-        sendQuestion();
-
-    }
-
-}
-
-
-/* =========================================================
-   TEXTAREA AUTO RESIZE
-   ========================================================= */
-
-questionInput.addEventListener(
-    "input",
-    function () {
-
-        this.style.height = "auto";
-
-        this.style.height =
-            Math.min(
-                this.scrollHeight,
-                120
-            ) + "px";
-
-    }
-);
-
-
-/* =========================================================
-   NEW CHAT
-   ========================================================= */
-
-function newChat() {
-
-    chatMessages.innerHTML = "";
-
-    welcome.style.display = "block";
-
-    questionInput.value = "";
-
-    resetTextarea();
-
-    questionInput.focus();
-
-
-    // Close sidebar on mobile
-
-    const sidebar =
-        document.querySelector(".sidebar");
-
-    sidebar.classList.remove("active");
-
-}
-
-
-/* =========================================================
-   MOBILE SIDEBAR
-   ========================================================= */
-
-function toggleSidebar() {
-
-    const sidebar =
-        document.querySelector(".sidebar");
-
-    sidebar.classList.toggle("active");
-
-}
-
-
-/* =========================================================
-   SCROLL CHAT
-   ========================================================= */
-
-function scrollToBottom() {
-
-    setTimeout(() => {
-
-        chatContainer.scrollTo({
-
-            top: chatContainer.scrollHeight,
-
-            behavior: "smooth"
-
-        });
-
-    }, 50);
-
-}
-function resetTextarea() {
-
-    questionInput.style.height = "auto";
-
-}
-
-
-function escapeHTML(text) {
-
-    const div =
-        document.createElement("div");
-
-    div.textContent = text;
-
-    return div.innerHTML;
-
->>>>>>> 0a3fd9b894c747b7917e97fab7f070c9e818edd4
+function formatAIResponse(text) {
+    const escaped = escapeHTML(text);
+    return escaped.replace(/\n/g, "<br>");
 }

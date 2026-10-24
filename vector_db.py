@@ -1,3 +1,5 @@
+import os
+import logging
 from pathlib import Path
 
 from qdrant_client import QdrantClient
@@ -12,15 +14,32 @@ from data_loader import COLLECTION, EMBED_DIM
 
 QDRANT_PATH = Path(__file__).parent / "qdrant_storage"
 
-
-_client = QdrantClient(path=str(QDRANT_PATH))
+_client: QdrantClient | None = None
 
 
 def _get_client() -> QdrantClient:
     """
-    Return the shared Qdrant client.
+    Return the shared Qdrant client (lazy singleton).
+    Supports either remote Qdrant Cloud via QDRANT_URL or local embedded storage.
     """
+    global _client
+    if _client is None:
+        qdrant_url = os.getenv("QDRANT_URL", "").strip()
+        qdrant_api_key = os.getenv("QDRANT_API_KEY", "").strip()
 
+        if qdrant_url:
+            logging.info("Connecting to remote Qdrant cluster at %s", qdrant_url)
+            _client = QdrantClient(
+                url=qdrant_url,
+                api_key=qdrant_api_key or None,
+                timeout=20,
+            )
+        else:
+            QDRANT_PATH.mkdir(parents=True, exist_ok=True)
+            _client = QdrantClient(
+                path=str(QDRANT_PATH),
+                force_disable_check_same_thread=True,
+            )
     return _client
 
 
