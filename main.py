@@ -214,10 +214,16 @@ def answer_from_dataset(question: str) -> str | None:
             applied_filters.append(city)
             break
 
-    if re.search(r"\b(?:never|not)\s+(?:been\s+)?benched\b", q):
+    never_benched = re.search(
+        r"\b(?:never|not|no|without)\s+(?:ever\s+)?(?:been\s+|being\s+|got\s+|get\s+|was\s+|were\s+)?benched\b"
+        r"|\b(?:haven|hasn|hadn|weren|wasn|didn|don|doesn)\s+t\s+(?:ever\s+)?(?:been\s+|got\s+|get\s+)?benched\b",
+        q,
+    )
+
+    if never_benched:
         filtered_df = filtered_df[filtered_df["EverBenched"].eq("No")]
         applied_filters.append("never benched")
-    elif re.search(r"\bever\s+(?:been\s+)?benched\b", q):
+    elif re.search(r"\bbenched\b", q):
         filtered_df = filtered_df[filtered_df["EverBenched"].eq("Yes")]
         applied_filters.append("ever benched")
 
